@@ -1,10 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:logicpad/core/di/service_locator.dart';
+import 'package:logicpad/core/services/app_update_service.dart';
 import 'package:logicpad/shared/theme/app_colors.dart';
 import 'package:logicpad/shared/theme/app_text_styles.dart';
 
-class ReleaseNotesScreen extends StatelessWidget {
+class ReleaseNotesScreen extends StatefulWidget {
   const ReleaseNotesScreen({super.key});
+
+  @override
+  State<ReleaseNotesScreen> createState() => _ReleaseNotesScreenState();
+}
+
+class _ReleaseNotesScreenState extends State<ReleaseNotesScreen> {
+  // null = cargando, '' = error/sin conexión, 'x.y.z' = cargado
+  ({String version, String notes})? _release;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final result = await sl<AppUpdateService>().fetchLatestRelease();
+    if (mounted) setState(() { _release = result; _loading = false; });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,71 +41,39 @@ class ReleaseNotesScreen extends StatelessWidget {
         backgroundColor: AppColors.primary,
         body: Stack(
           children: [
-            // ── Fondo decorativo ──────────────────────────────────────
-            Positioned(
-              top: -60,
-              right: -80,
-              child: _DecorCircle(size: 260, opacity: 0.06),
-            ),
-            Positioned(
-              top: 80,
-              left: -100,
-              child: _DecorCircle(size: 200, opacity: 0.04),
-            ),
-            Positioned(
-              top: 160,
-              right: 40,
-              child: _DecorCircle(size: 100, opacity: 0.07),
-            ),
+            // Círculos decorativos de fondo
+            Positioned(top: -60, right: -80, child: _Circle(260, 0.06)),
+            Positioned(top: 80, left: -100, child: _Circle(200, 0.04)),
+            Positioned(top: 160, right: 40, child: _Circle(100, 0.07)),
 
-            // ── Contenido ─────────────────────────────────────────────
             SafeArea(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Header
+                  // ── Header ────────────────────────────────────────────
                   Padding(
                     padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Back + versión
                         Row(
                           children: [
                             IconButton(
                               onPressed: () => Navigator.of(context).pop(),
-                              icon: const Icon(
-                                Icons.arrow_back_ios_new_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
+                              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                                  color: Colors.white, size: 20),
                               padding: EdgeInsets.zero,
                               visualDensity: VisualDensity.compact,
                             ),
                             const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                ),
-                              ),
-                              child: Text(
-                                'v0.1.0  •  MVP',
-                                style: AppTextStyles.labelSmall.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
+                            _VersionBadge(
+                              version: _loading
+                                  ? '…'
+                                  : (_release?.version ?? 'v0.1.0'),
                             ),
                           ],
                         ),
                         const SizedBox(height: 24),
-
-                        // Ícono de la app
                         Container(
                           width: 64,
                           height: 64,
@@ -91,17 +81,12 @@ class ReleaseNotesScreen extends StatelessWidget {
                             color: Colors.white.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(18),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.2),
-                            ),
+                                color: Colors.white.withValues(alpha: 0.2)),
                           ),
-                          child: const Icon(
-                            Icons.edit_note_rounded,
-                            color: Colors.white,
-                            size: 32,
-                          ),
+                          child: const Icon(Icons.edit_note_rounded,
+                              color: Colors.white, size: 32),
                         ),
                         const SizedBox(height: 16),
-
                         Text(
                           'Novedades en\nLogicPad',
                           style: AppTextStyles.headlineSmall.copyWith(
@@ -113,7 +98,11 @@ class ReleaseNotesScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Primera versión pública — todo lo que podés hacer hoy.',
+                          _loading
+                              ? 'Buscando la última release…'
+                              : _release != null
+                                  ? 'Versión ${_release!.version} — publicada en GitHub Releases.'
+                                  : 'Sin conexión — mostrando la descripción de esta versión.',
                           style: AppTextStyles.bodyMedium.copyWith(
                             color: Colors.white.withValues(alpha: 0.7),
                           ),
@@ -123,99 +112,24 @@ class ReleaseNotesScreen extends StatelessWidget {
                     ),
                   ),
 
-                  // ── Tarjeta de contenido scrolleable ─────────────────
+                  // ── Tarjeta de contenido ─────────────────────────────
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
+                        color: isDark
+                            ? AppColors.backgroundDark
+                            : AppColors.backgroundLight,
                         borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(32),
-                        ),
+                            top: Radius.circular(32)),
                       ),
                       child: ClipRRect(
                         borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(32),
-                        ),
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _ChangeGroup(
-                                icon: Icons.gesture_rounded,
-                                iconColor: const Color(0xFF6366F1),
-                                title: 'Lienzo infinito',
-                                items: const [
-                                  'Dibujá libremente en un lienzo de tamaño ilimitado — sin bordes, sin límites.',
-                                  'Zoom de 20% a 500% con pellizco (pinch-to-zoom), centrado en el punto del gesto.',
-                                  'Modo "Mover" para desplazarte sin dibujar.',
-                                  'Soporte de dedo, stylus, Apple Pencil y S Pen sin configuración extra.',
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-                              _ChangeGroup(
-                                icon: Icons.crop_square_rounded,
-                                iconColor: const Color(0xFF10B981),
-                                title: 'Reconocimiento de figuras',
-                                items: const [
-                                  'Dibujá un rectángulo a mano — LogicPad lo detecta y te ofrece limpiarlo con un toque.',
-                                  'Lo mismo para líneas rectas: traza una línea y se vectoriza automáticamente.',
-                                  'El reconocimiento usa heurísticas geométricas: sin IA, 100% offline.',
-                                  'Una notificación no intrusiva aparece solo cuando hay una figura candidata — nunca convierte nada sin tu confirmación.',
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-                              _ChangeGroup(
-                                icon: Icons.table_chart_rounded,
-                                iconColor: AppColors.secondary,
-                                title: 'Clases UML',
-                                items: const [
-                                  'Después de limpiar un rectángulo, tocá "Clase" para convertirlo en una clase UML con nombre y atributos.',
-                                  'Hacé doble-tap en cualquier clase existente para editarla.',
-                                  'Los atributos usan los prefijos estándar: + público, - privado, # protegido.',
-                                  'La clase se renderiza con un encabezado y una lista de atributos formateada automáticamente.',
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-                              _ChangeGroup(
-                                icon: Icons.history_rounded,
-                                iconColor: const Color(0xFFF43F5E),
-                                title: 'Historial y persistencia',
-                                items: const [
-                                  'Deshacer y rehacer con hasta 30 pasos de historial.',
-                                  'El lienzo se guarda automáticamente cada vez que dibujás o modificás algo.',
-                                  'Al cerrar y reabrir la app, todo queda exactamente como lo dejaste.',
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-                              _ChangeGroup(
-                                icon: Icons.system_update_rounded,
-                                iconColor: const Color(0xFF3B82F6),
-                                title: 'Actualizaciones automáticas',
-                                items: const [
-                                  'Al abrir la app, se verifica si hay una nueva versión disponible en GitHub.',
-                                  'Si hay una actualización, podés descargarla e instalarla sin salir de la app.',
-                                  'Si acabás de actualizar, se muestra una pantalla con las novedades de la versión — exactamente esta.',
-                                ],
-                              ),
-                              const SizedBox(height: 28),
-
-                              // Separador
-                              Divider(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .outline
-                                    .withValues(alpha: 0.3),
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Próximamente
-                              _ComingSoonCard(),
-
-                              const SizedBox(height: 8),
-                            ],
-                          ),
-                        ),
+                            top: Radius.circular(32)),
+                        child: _loading
+                            ? const _LoadingState()
+                            : _release != null
+                                ? _GitHubNotes(notes: _release!.notes)
+                                : const _OfflineNotes(),
                       ),
                     ),
                   ),
@@ -230,16 +144,382 @@ class ReleaseNotesScreen extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Grupo de cambios
+// Badge de versión
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ChangeGroup extends StatelessWidget {
+class _VersionBadge extends StatelessWidget {
+  final String version;
+  const _VersionBadge({required this.version});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        'v$version',
+        style: AppTextStyles.labelSmall.copyWith(
+          color: Colors.white.withValues(alpha: 0.9),
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Estado de carga
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LoadingState extends StatelessWidget {
+  const _LoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(color: AppColors.primary),
+          const SizedBox(height: 16),
+          Text(
+            'Cargando notas de la release…',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Notas traídas de GitHub — renderizadas línea a línea con formato básico
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _GitHubNotes extends StatelessWidget {
+  final String notes;
+  const _GitHubNotes({required this.notes});
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = notes.split('\n');
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
+      itemCount: lines.length + 1, // +1 para el footer
+      itemBuilder: (context, i) {
+        if (i == lines.length) return const _Footer();
+        final line = lines[i];
+        return _MarkdownLine(line: line);
+      },
+    );
+  }
+}
+
+/// Renderiza una línea de Markdown con formato básico (H2, H3, bullet, hr, texto).
+class _MarkdownLine extends StatelessWidget {
+  final String line;
+  const _MarkdownLine({required this.line});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+
+    // Línea vacía
+    if (line.trim().isEmpty) return const SizedBox(height: 6);
+
+    // Separador ---
+    if (RegExp(r'^-{3,}$').hasMatch(line.trim())) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Divider(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+        ),
+      );
+    }
+
+    // ## Encabezado H2
+    if (line.startsWith('## ')) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 20, bottom: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 20,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                line.substring(3),
+                style: AppTextStyles.titleMedium.copyWith(
+                  color: onSurface,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ### Encabezado H3 (con emoji generalmente)
+    if (line.startsWith('### ')) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 16, bottom: 8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark
+                ? AppColors.surfaceDark
+                : AppColors.primary.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.15),
+            ),
+          ),
+          child: Text(
+            line.substring(4),
+            style: AppTextStyles.titleSmall.copyWith(
+              color: onSurface,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // > Quote / nota
+    if (line.startsWith('> ')) {
+      return Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        decoration: BoxDecoration(
+          color: AppColors.secondary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border(
+            left: BorderSide(color: AppColors.secondary, width: 3),
+          ),
+        ),
+        child: _InlineText(
+          line.substring(2),
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: onSurface.withValues(alpha: 0.75),
+          ),
+        ),
+      );
+    }
+
+    // - Bullet
+    if (line.startsWith('- ')) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 5),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 7),
+              child: Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _InlineText(
+                line.substring(2),
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: onSurface.withValues(alpha: 0.8),
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Texto plano
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: _InlineText(
+        line,
+        style: AppTextStyles.bodyMedium.copyWith(
+          color: onSurface.withValues(alpha: 0.75),
+          height: 1.45,
+        ),
+      ),
+    );
+  }
+}
+
+/// Renderiza inline: **bold** y `code` dentro del texto.
+class _InlineText extends StatelessWidget {
+  final String text;
+  final TextStyle style;
+  const _InlineText(this.text, {required this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(_parseInline(text, style));
+  }
+
+  TextSpan _parseInline(String raw, TextStyle base) {
+    final spans = <InlineSpan>[];
+    // Procesa **bold** y `code` en orden de aparición
+    final pattern = RegExp(r'\*\*(.+?)\*\*|`(.+?)`');
+    int cursor = 0;
+    for (final match in pattern.allMatches(raw)) {
+      if (match.start > cursor) {
+        spans.add(TextSpan(text: raw.substring(cursor, match.start), style: base));
+      }
+      if (match.group(1) != null) {
+        spans.add(TextSpan(
+          text: match.group(1),
+          style: base.copyWith(fontWeight: FontWeight.w700),
+        ));
+      } else if (match.group(2) != null) {
+        spans.add(TextSpan(
+          text: match.group(2),
+          style: base.copyWith(
+            fontFamily: 'monospace',
+            backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+          ),
+        ));
+      }
+      cursor = match.end;
+    }
+    if (cursor < raw.length) {
+      spans.add(TextSpan(text: raw.substring(cursor), style: base));
+    }
+    return TextSpan(children: spans);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Notas offline (fallback cuando no hay conexión ni releases)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _OfflineNotes extends StatelessWidget {
+  const _OfflineNotes();
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _InfoBanner(),
+          const SizedBox(height: 20),
+          _FeatureCard(
+            icon: Icons.gesture_rounded,
+            iconColor: const Color(0xFF6366F1),
+            title: 'Lienzo infinito',
+            items: const [
+              'Dibujá libremente sin bordes ni límites',
+              'Zoom de 20 % a 500 % con pellizco',
+              'Soporte nativo de dedo, stylus y S Pen',
+            ],
+          ),
+          const SizedBox(height: 16),
+          _FeatureCard(
+            icon: Icons.crop_square_rounded,
+            iconColor: const Color(0xFF10B981),
+            title: 'Reconocimiento de figuras',
+            items: const [
+              'Detecta rectángulos y líneas rectas dibujados a mano',
+              'Sin IA — heurísticas geométricas puras, 100 % offline',
+              'Nunca convierte nada sin tu confirmación',
+            ],
+          ),
+          const SizedBox(height: 16),
+          _FeatureCard(
+            icon: Icons.table_chart_rounded,
+            iconColor: AppColors.secondary,
+            title: 'Clases UML',
+            items: const [
+              'Convertí cualquier rectángulo en una clase UML',
+              'Editá nombre, atributos y métodos con doble-tap',
+              'Prefijos: + público · - privado · # protegido',
+            ],
+          ),
+          const SizedBox(height: 16),
+          _FeatureCard(
+            icon: Icons.history_rounded,
+            iconColor: const Color(0xFFF43F5E),
+            title: 'Historial y persistencia',
+            items: const [
+              'Deshacer y rehacer con hasta 30 pasos',
+              'Guardado automático — todo queda tal como lo dejaste',
+            ],
+          ),
+          const SizedBox(height: 8),
+          const _Footer(),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest
+            .withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.wifi_off_rounded, size: 18, color: AppColors.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Sin conexión — conectate a internet para ver las notas actualizadas de la última release.',
+              style: AppTextStyles.labelSmall.copyWith(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeatureCard extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String title;
   final List<String> items;
 
-  const _ChangeGroup({
+  const _FeatureCard({
     required this.icon,
     required this.iconColor,
     required this.title,
@@ -250,20 +530,13 @@ class _ChangeGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,180 +544,97 @@ class _ChangeGroup extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
                   color: iconColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                child: Icon(icon, color: iconColor, size: 20),
+                child: Icon(icon, color: iconColor, size: 18),
               ),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: AppTextStyles.titleSmall.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          ...items.map((item) => _BulletItem(text: item, color: iconColor)),
-        ],
-      ),
-    );
-  }
-}
-
-class _BulletItem extends StatelessWidget {
-  final String text;
-  final Color color;
-  const _BulletItem({required this.text, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 5),
-            child: Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.75),
-                height: 1.45,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Próximamente
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ComingSoonCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [
-                  AppColors.primary.withValues(alpha: 0.25),
-                  AppColors.surfaceDark,
-                ]
-              : [
-                  AppColors.primary.withValues(alpha: 0.04),
-                  AppColors.backgroundLight,
-                ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.rocket_launch_rounded,
-                  color: AppColors.primary, size: 20),
               const SizedBox(width: 10),
-              Text(
-                'En camino (v0.2)',
-                style: AppTextStyles.titleSmall.copyWith(
-                  color: AppColors.primary,
-                ),
-              ),
+              Text(title, style: AppTextStyles.titleSmall),
             ],
           ),
           const SizedBox(height: 12),
-          _FutureItem('Reconocimiento de más figuras: óvalo, diamante, flechas.'),
-          _FutureItem('Texto escrito a mano convertido a campo editable.'),
-          _FutureItem('Exportación: PNG, Mermaid, PlantUML.'),
-          _FutureItem('Múltiples lienzos organizados por proyecto.'),
+          for (final item in items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 5),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Container(
+                      width: 5,
+                      height: 5,
+                      decoration: BoxDecoration(
+                          color: iconColor, shape: BoxShape.circle),
+                    ),
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.75),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
-class _FutureItem extends StatelessWidget {
-  final String text;
-  const _FutureItem(this.text);
+// ─────────────────────────────────────────────────────────────────────────────
+// Footer
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _Footer extends StatelessWidget {
+  const _Footer();
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 5),
-            child: Icon(Icons.hourglass_top_rounded,
-                size: 10,
-                color: AppColors.primary.withValues(alpha: 0.5)),
+      padding: const EdgeInsets.only(top: 24),
+      child: Center(
+        child: Text(
+          'LogicPad · github.com/GGeva07/logicpad',
+          style: AppTextStyles.labelSmall.copyWith(
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.35),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.6),
-                height: 1.45,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Decoración de fondo
+// Círculo decorativo de fondo
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _DecorCircle extends StatelessWidget {
+class _Circle extends StatelessWidget {
   final double size;
   final double opacity;
-  const _DecorCircle({required this.size, required this.opacity});
+  const _Circle(this.size, this.opacity);
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: opacity),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: opacity),
+        ),
+      );
 }

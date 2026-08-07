@@ -54,14 +54,16 @@ class _CanvasScreenState extends State<CanvasScreen> with TickerProviderStateMix
   Widget build(BuildContext context) {
     return BlocProvider<CanvasBloc>(
       create: (_) => sl<CanvasBloc>()..add(const LoadCanvas()),
-      child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness:
-              Theme.of(context).brightness == Brightness.dark ? Brightness.light : Brightness.dark,
-        ),
-        child: Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      child: Builder(builder: (blocCtx) {
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Theme.of(blocCtx).brightness == Brightness.dark
+                ? Brightness.light
+                : Brightness.dark,
+          ),
+          child: Scaffold(
+            backgroundColor: Theme.of(blocCtx).scaffoldBackgroundColor,
           body: Stack(
             children: [
               // ── LIENZO ───────────────────────────────────────────────
@@ -128,13 +130,11 @@ class _CanvasScreenState extends State<CanvasScreen> with TickerProviderStateMix
                       selected: _selectedTool,
                       onToolChanged: (t) {
                         setState(() => _selectedTool = t);
-                        // Sincronizar con el bloc
-                        final bloc = context.read<CanvasBloc>();
-                        bloc.add(ToggleTool(
+                        blocCtx.read<CanvasBloc>().add(ToggleTool(
                           t == CanvasTool.eraser ? ToolType.eraser : ToolType.pen,
                         ));
                       },
-                      onClearRequested: () => _confirmClear(context),
+                      onClearRequested: () => _confirmClear(blocCtx),
                     ),
                   ),
                 ),
@@ -142,7 +142,8 @@ class _CanvasScreenState extends State<CanvasScreen> with TickerProviderStateMix
             ],
           ),
         ),
-      ),
+        );
+      }),
     );
   }
 

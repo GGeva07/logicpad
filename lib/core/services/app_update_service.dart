@@ -104,6 +104,29 @@ class AppUpdateService {
     }
   }
 
+  /// Obtiene la última release publicada en GitHub (versión + cuerpo de notas).
+  /// Útil para la pantalla "Novedades" — no requiere que sea más nueva que la
+  /// instalada. Devuelve null si no hay releases o si no hay conexión.
+  Future<({String version, String notes})?> fetchLatestRelease() async {
+    try {
+      final response = await _client
+          .get(
+            Uri.parse('https://api.github.com/repos/$owner/$repo/releases/latest'),
+            headers: const {'Accept': 'application/vnd.github+json'},
+          )
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode != 200) return null;
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final tag = (json['tag_name'] as String?)?.trim();
+      final body = (json['body'] as String?)?.trim();
+      if (tag == null || body == null || body.isEmpty) return null;
+      final version = tag.startsWith('v') ? tag.substring(1) : tag;
+      return (version: version, notes: body);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Descarga el APK a un archivo temporal, reportando progreso 0..1 por
   /// [onProgress]. Lanza si la descarga falla; el caller decide cómo
   /// mostrarlo.
