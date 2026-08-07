@@ -23,6 +23,7 @@ class CanvasState {
   final List<Stroke> strokes;
   final List<RecognizedObject> objects;
   final ToolType currentTool;
+  final int currentColorValue;
   final Stroke? activeStroke;
   final RecognizedObject? pendingObject;
   final bool isLoading;
@@ -35,6 +36,7 @@ class CanvasState {
     this.strokes = const [],
     this.objects = const [],
     this.currentTool = ToolType.pen,
+    this.currentColorValue = 0xFF1E1E1E,
     this.activeStroke,
     this.pendingObject,
     this.isLoading = false,
@@ -49,6 +51,7 @@ class CanvasState {
     List<Stroke>? strokes,
     List<RecognizedObject>? objects,
     ToolType? currentTool,
+    int? currentColorValue,
     Stroke? Function()? activeStroke,
     RecognizedObject? Function()? pendingObject,
     bool? isLoading,
@@ -59,6 +62,7 @@ class CanvasState {
       strokes: strokes ?? this.strokes,
       objects: objects ?? this.objects,
       currentTool: currentTool ?? this.currentTool,
+      currentColorValue: currentColorValue ?? this.currentColorValue,
       activeStroke: activeStroke != null ? activeStroke() : this.activeStroke,
       pendingObject: pendingObject != null ? pendingObject() : this.pendingObject,
       isLoading: isLoading ?? this.isLoading,

@@ -19,6 +19,7 @@ class CanvasBloc extends Bloc<CanvasEvent, CanvasState> {
     on<ConfirmPendingObject>(_onConfirmPendingObject);
     on<RejectPendingObject>(_onRejectPendingObject);
     on<ToggleTool>(_onToggleTool);
+    on<ChangeColor>(_onChangeColor);
     on<Undo>(_onUndo);
     on<Redo>(_onRedo);
     on<UpdateUmlClass>(_onUpdateUmlClass);
@@ -58,6 +59,7 @@ class CanvasBloc extends Bloc<CanvasEvent, CanvasState> {
       id: id,
       points: [event.point],
       toolType: state.currentTool,
+      colorValue: state.currentColorValue,
     );
     emit(state.copyWith(activeStroke: () => newStroke));
   }
@@ -173,6 +175,10 @@ class CanvasBloc extends Bloc<CanvasEvent, CanvasState> {
 
   void _onToggleTool(ToggleTool event, Emitter<CanvasState> emit) {
     emit(state.copyWith(currentTool: event.toolType));
+  }
+
+  void _onChangeColor(ChangeColor event, Emitter<CanvasState> emit) {
+    emit(state.copyWith(currentColorValue: event.colorValue));
   }
 
   Future<void> _onUndo(Undo event, Emitter<CanvasState> emit) async {

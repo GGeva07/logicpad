@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -319,9 +320,7 @@ class _RecognitionBanner extends StatelessWidget {
         final pending = state.pendingObject;
         if (pending == null) return const SizedBox.shrink();
 
-        final isRect = pending.type == RecognizedObjectType.rectangle;
-        final label = isRect ? 'Rectángulo detectado' : 'Línea recta detectada';
-        final icon = isRect ? Icons.crop_square_rounded : Icons.linear_scale_rounded;
+        final (label, icon, hint, canBeClass) = _shapeInfo(pending.type);
 
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 72, 16, 0),
@@ -365,9 +364,7 @@ class _RecognitionBanner extends StatelessWidget {
                       style: AppTextStyles.titleSmall.copyWith(color: Colors.white),
                     ),
                     Text(
-                      isRect
-                          ? 'Toca "Limpiar" para convertirlo en vector, o "Clase" para crear una clase UML'
-                          : 'Toca "Limpiar" para convertirlo en línea perfecta',
+                      hint,
                       style: AppTextStyles.labelSmall.copyWith(
                         color: Colors.white.withValues(alpha: 0.8),
                       ),
@@ -376,7 +373,6 @@ class _RecognitionBanner extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              // Botón secundario Ignorar
               TextButton(
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.white.withValues(alpha: 0.75),
@@ -386,8 +382,7 @@ class _RecognitionBanner extends StatelessWidget {
                     context.read<CanvasBloc>().add(const RejectPendingObject()),
                 child: const Text('Ignorar'),
               ),
-              // Botón opcional "Clase" sólo para rectángulo
-              if (isRect)
+              if (canBeClass)
                 TextButton(
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.secondary,
@@ -395,11 +390,10 @@ class _RecognitionBanner extends StatelessWidget {
                   ),
                   onPressed: () {
                     context.read<CanvasBloc>().add(const ConfirmPendingObject());
-                    // Pequeño delay para que el objeto aparezca antes de abrir el editor
                     Future.delayed(const Duration(milliseconds: 120), () {
                       if (context.mounted) {
-                        final state = context.read<CanvasBloc>().state;
-                        final lastObj = state.objects.isNotEmpty ? state.objects.last : null;
+                        final s = context.read<CanvasBloc>().state;
+                        final lastObj = s.objects.isNotEmpty ? s.objects.last : null;
                         if (lastObj != null) {
                           showModalBottomSheet(
                             context: context,
@@ -413,7 +407,6 @@ class _RecognitionBanner extends StatelessWidget {
                   },
                   child: const Text('Clase'),
                 ),
-              // Botón principal Limpiar
               FilledButton(
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.secondary,
@@ -423,10 +416,7 @@ class _RecognitionBanner extends StatelessWidget {
                 ),
                 onPressed: () {
                   context.read<CanvasBloc>().add(const ConfirmPendingObject());
-                  AppNotification.success(
-                    context,
-                    isRect ? '✓ Rectángulo vectorizado' : '✓ Línea perfecta',
-                  );
+                  AppNotification.success(context, '✓ $label vectorizado');
                 },
                 child: const Text('Limpiar'),
               ),
@@ -436,11 +426,60 @@ class _RecognitionBanner extends StatelessWidget {
       },
     );
   }
+
+  static (String label, IconData icon, String hint, bool canBeClass)
+      _shapeInfo(RecognizedObjectType type) {
+    switch (type) {
+      case RecognizedObjectType.rectangle:
+        return (
+          'Rectángulo detectado',
+          Icons.crop_square_rounded,
+          'Toca "Limpiar" para vectorizar, o "Clase" para crear una clase UML',
+          true,
+        );
+      case RecognizedObjectType.circle:
+        return (
+          'Círculo detectado',
+          Icons.radio_button_unchecked_rounded,
+          'Toca "Limpiar" para convertirlo en un círculo perfecto',
+          false,
+        );
+      case RecognizedObjectType.diamond:
+        return (
+          'Rombo detectado',
+          Icons.diamond_outlined,
+          'Toca "Limpiar" para convertirlo en un rombo limpio',
+          false,
+        );
+      case RecognizedObjectType.line:
+        return (
+          'Línea recta detectada',
+          Icons.linear_scale_rounded,
+          'Toca "Limpiar" para convertirla en una línea perfecta',
+          false,
+        );
+      case RecognizedObjectType.arrow:
+        return (
+          'Flecha detectada',
+          Icons.arrow_forward_rounded,
+          'Toca "Limpiar" para convertirla en una flecha vectorial',
+          false,
+        );
+      case RecognizedObjectType.umlClass:
+        return (
+          'Clase UML',
+          Icons.table_chart_rounded,
+          '',
+          false,
+        );
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Header chip (logo)
 // ─────────────────────────────────────────────────────────────────────────────
+
 
 class _HeaderChip extends StatelessWidget {
   @override
@@ -622,9 +661,18 @@ class _BottomToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
+        if (selected == CanvasTool.pen)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _ColorPalette(),
+          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
         // Selector de herramientas
         Container(
           padding: const EdgeInsets.all(6),
@@ -703,6 +751,74 @@ class _BottomToolbar extends StatelessWidget {
           ),
         ),
       ],
+    ),
+      ],
+    );
+  }
+}
+
+class _ColorPalette extends StatelessWidget {
+  static const colors = [
+    0xFF1E1E1E, // Negro (Default)
+    0xFFEF4444, // Rojo
+    0xFFF59E0B, // Naranja
+    0xFF10B981, // Verde
+    0xFF3B82F6, // Azul
+    0xFF8B5CF6, // Morado
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppColors.surfaceDark.withValues(alpha: 0.95)
+            : Colors.white.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.06),
+        ),
+      ),
+      child: BlocBuilder<CanvasBloc, CanvasState>(
+        buildWhen: (a, b) => a.currentColorValue != b.currentColorValue,
+        builder: (context, state) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: colors.map((c) {
+              final isSelected = state.currentColorValue == c;
+              // Ajustar negro en modo oscuro para que se vea
+              final displayColor = (c == 0xFF1E1E1E && isDark) ? 0xFFE0E0E0 : c;
+              return GestureDetector(
+                onTap: () => context.read<CanvasBloc>().add(ChangeColor(c)),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: Color(displayColor),
+                    shape: BoxShape.circle,
+                    border: isSelected
+                        ? Border.all(color: AppColors.secondary, width: 3)
+                        : null,
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        },
+      ),
     );
   }
 }
@@ -1036,7 +1152,9 @@ class CanvasContentPainter extends CustomPainter {
           Paint()
             ..color = stroke.toolType == ToolType.eraser
                 ? (isDark ? const Color(0xFF0F1117) : const Color(0xFFF5F7FA))
-                : Color(stroke.colorValue)
+                : (stroke.colorValue == 0xFF1E1E1E && isDark
+                    ? Colors.white
+                    : Color(stroke.colorValue))
             ..style = PaintingStyle.fill,
         );
       }
@@ -1046,7 +1164,9 @@ class CanvasContentPainter extends CustomPainter {
     final paint = Paint()
       ..color = stroke.toolType == ToolType.eraser
           ? (isDark ? const Color(0xFF0F1117) : const Color(0xFFF5F7FA))
-          : Color(stroke.colorValue)
+          : (stroke.colorValue == 0xFF1E1E1E && isDark
+              ? Colors.white
+              : Color(stroke.colorValue))
       ..strokeWidth = stroke.toolType == ToolType.eraser ? 24.0 : stroke.strokeWidth
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
@@ -1079,7 +1199,10 @@ class CanvasContentPainter extends CustomPainter {
   }
 
   void _paintObject(Canvas canvas, RecognizedObject obj) {
-    final strokeColor = isDark ? Colors.white : AppColors.primary;
+    final rawColorValue = obj.properties['colorValue'] as int? ?? AppColors.primary.value;
+    final strokeColor = (rawColorValue == 0xFF1E1E1E && isDark)
+        ? Colors.white
+        : Color(rawColorValue);
     final fillColor = isDark
         ? AppColors.surfaceDark.withValues(alpha: 0.95)
         : Colors.white.withValues(alpha: 0.97);
@@ -1102,12 +1225,63 @@ class CanvasContentPainter extends CustomPainter {
         canvas.drawRRect(RRect.fromRectAndRadius(bb, radius), fillPaint);
         canvas.drawRRect(RRect.fromRectAndRadius(bb, radius), strokePaint);
 
+      case RecognizedObjectType.circle:
+        final cx = obj.properties['centerX'] as double;
+        final cy = obj.properties['centerY'] as double;
+        final rx = obj.properties['radiusX'] as double;
+        final ry = obj.properties['radiusY'] as double;
+        final rect = Rect.fromCenter(center: Offset(cx, cy), width: rx * 2, height: ry * 2);
+        canvas.drawOval(rect, fillPaint);
+        canvas.drawOval(rect, strokePaint);
+
+      case RecognizedObjectType.diamond:
+        final path = Path()
+          ..moveTo(bb.center.dx, bb.top)
+          ..lineTo(bb.right, bb.center.dy)
+          ..lineTo(bb.center.dx, bb.bottom)
+          ..lineTo(bb.left, bb.center.dy)
+          ..close();
+        canvas.drawPath(path, fillPaint);
+        canvas.drawPath(path, strokePaint..strokeJoin = StrokeJoin.miter);
+
       case RecognizedObjectType.line:
         final sx = obj.properties['startX'] as double;
         final sy = obj.properties['startY'] as double;
         final ex = obj.properties['endX'] as double;
         final ey = obj.properties['endY'] as double;
         canvas.drawLine(Offset(sx, sy), Offset(ex, ey), strokePaint..strokeWidth = 2.5);
+
+      case RecognizedObjectType.arrow:
+        final sx = obj.properties['startX'] as double;
+        final sy = obj.properties['startY'] as double;
+        final ex = obj.properties['endX'] as double;
+        final ey = obj.properties['endY'] as double;
+        final headAtEnd = obj.properties['headAtEnd'] as bool? ?? true;
+        
+        final start = Offset(sx, sy);
+        final end = Offset(ex, ey);
+        
+        canvas.drawLine(start, end, strokePaint..strokeWidth = 2.5);
+        
+        const headLen = 18.0;
+        const headAngle = 35 * 3.1415926535897932 / 180;
+        
+        final tip = headAtEnd ? end : start;
+        final base = headAtEnd ? start : end;
+        
+        final dir = tip - base;
+        final angle = math.atan2(dir.dy, dir.dx);
+        
+        final p1 = tip - Offset(math.cos(angle - headAngle) * headLen, math.sin(angle - headAngle) * headLen);
+        final p2 = tip - Offset(math.cos(angle + headAngle) * headLen, math.sin(angle + headAngle) * headLen);
+        
+        final headPath = Path()
+          ..moveTo(tip.dx, tip.dy)
+          ..lineTo(p1.dx, p1.dy)
+          ..lineTo(p2.dx, p2.dy)
+          ..close();
+          
+        canvas.drawPath(headPath, Paint()..color = strokeColor..style = PaintingStyle.fill);
 
       case RecognizedObjectType.umlClass:
         _paintUmlClass(canvas, obj, fillPaint, strokePaint, strokeColor);

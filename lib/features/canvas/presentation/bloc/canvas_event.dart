@@ -35,6 +35,11 @@ class ToggleTool extends CanvasEvent {
   const ToggleTool(this.toolType);
 }
 
+class ChangeColor extends CanvasEvent {
+  final int colorValue;
+  const ChangeColor(this.colorValue);
+}
+
 class Undo extends CanvasEvent {
   const Undo();
 }
