@@ -350,6 +350,7 @@ class RecognitionService {
       headDev += _distanceToSegment(p.toOffset(), bodyStart, end);
     }
     headDev /= headPoints.length;
+    if (headDev < 5.0) return null;
     final headScore = (headDev / 15.0).clamp(0.0, 1.0);
 
     // La cabeza debe ser corta (no más del 35% de la longitud total)

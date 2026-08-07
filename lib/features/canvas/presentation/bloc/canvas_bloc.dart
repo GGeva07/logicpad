@@ -22,7 +22,7 @@ class CanvasBloc extends Bloc<CanvasEvent, CanvasState> {
     on<ChangeColor>(_onChangeColor);
     on<Undo>(_onUndo);
     on<Redo>(_onRedo);
-    on<UpdateUmlClass>(_onUpdateUmlClass);
+    on<UpdateSoftwareObject>(_onUpdateSoftwareObject);
     on<DeleteObject>(_onDeleteObject);
     on<ClearAll>(_onClearAll);
   }
@@ -213,11 +213,11 @@ class CanvasBloc extends Bloc<CanvasEvent, CanvasState> {
     await _datasource.saveCanvas(strokes: snapshot.strokes, objects: snapshot.objects);
   }
 
-  Future<void> _onUpdateUmlClass(UpdateUmlClass event, Emitter<CanvasState> emit) async {
+  Future<void> _onUpdateSoftwareObject(UpdateSoftwareObject event, Emitter<CanvasState> emit) async {
     final updatedObjects = state.objects.map((o) {
       if (o.id == event.id) {
         return o.copyWith(
-          type: RecognizedObjectType.umlClass,
+          type: event.type,
           properties: {
             'name': event.name,
             'attributes': event.attributes,

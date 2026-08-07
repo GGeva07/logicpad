@@ -65,9 +65,10 @@ class _CanvasScreenState extends State<CanvasScreen> with TickerProviderStateMix
           ),
           child: Scaffold(
             backgroundColor: Theme.of(blocCtx).scaffoldBackgroundColor,
-          body: Stack(
-            children: [
-              // ── LIENZO ───────────────────────────────────────────────
+            body: SizedBox.expand(
+              child: Stack(
+                children: [
+                  // ── LIENZO ───────────────────────────────────────────────
               _CanvasArea(
                 tc: _tc,
                 tool: _selectedTool,
@@ -143,9 +144,10 @@ class _CanvasScreenState extends State<CanvasScreen> with TickerProviderStateMix
             ],
           ),
         ),
-        );
-      }),
+      ),
     );
+  }),
+);
   }
 
   void _confirmClear(BuildContext context) {
@@ -286,7 +288,7 @@ class _ObjectHitLayer extends StatelessWidget {
             height: obj.boundingBox.height,
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
-              onDoubleTap: () => _openUmlEditor(context, obj),
+              onDoubleTap: () => _openSoftwareEditor(context, obj),
               child: const SizedBox.expand(),
             ),
           ),
@@ -294,12 +296,12 @@ class _ObjectHitLayer extends StatelessWidget {
     );
   }
 
-  void _openUmlEditor(BuildContext context, RecognizedObject obj) {
+  void _openSoftwareEditor(BuildContext context, RecognizedObject obj) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _UmlClassEditor(obj: obj),
+      builder: (ctx) => _SoftwareObjectEditor(obj: obj),
     );
   }
 }
@@ -399,7 +401,7 @@ class _RecognitionBanner extends StatelessWidget {
                             context: context,
                             isScrollControlled: true,
                             backgroundColor: Colors.transparent,
-                            builder: (_) => _UmlClassEditor(obj: lastObj),
+                            builder: (_) => _SoftwareObjectEditor(obj: lastObj),
                           );
                         }
                       }
@@ -466,6 +468,10 @@ class _RecognitionBanner extends StatelessWidget {
           false,
         );
       case RecognizedObjectType.umlClass:
+      case RecognizedObjectType.sqlTable:
+      case RecognizedObjectType.enumObj:
+      case RecognizedObjectType.interfaceObj:
+      case RecognizedObjectType.apiEndpoint:
         return (
           'Clase UML',
           Icons.table_chart_rounded,
@@ -673,85 +679,85 @@ class _BottomToolbar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-        // Selector de herramientas
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: isDark
-                ? AppColors.surfaceDark.withValues(alpha: 0.95)
-                : Colors.white.withValues(alpha: 0.95),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.18),
-                blurRadius: 18,
-                offset: const Offset(0, 5),
+            // Selector de herramientas
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppColors.surfaceDark.withValues(alpha: 0.95)
+                    : Colors.white.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 18,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.06),
+                ),
               ),
-            ],
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.06)
-                  : Colors.black.withValues(alpha: 0.06),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _ToolBtn(
+                    icon: Icons.open_with_rounded,
+                    label: 'Mover',
+                    tool: CanvasTool.pan,
+                    selected: selected,
+                    onTap: () => onToolChanged(CanvasTool.pan),
+                  ),
+                  const SizedBox(width: 4),
+                  _ToolBtn(
+                    icon: Icons.brush_rounded,
+                    label: 'Dibujar',
+                    tool: CanvasTool.pen,
+                    selected: selected,
+                    onTap: () => onToolChanged(CanvasTool.pen),
+                  ),
+                  const SizedBox(width: 4),
+                  _ToolBtn(
+                    icon: Icons.auto_fix_high_rounded,
+                    label: 'Borrar',
+                    tool: CanvasTool.eraser,
+                    selected: selected,
+                    onTap: () => onToolChanged(CanvasTool.eraser),
+                  ),
+                ],
+              ),
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _ToolBtn(
-                icon: Icons.open_with_rounded,
-                label: 'Mover',
-                tool: CanvasTool.pan,
-                selected: selected,
-                onTap: () => onToolChanged(CanvasTool.pan),
+            // Botón limpiar lienzo
+            Container(
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppColors.surfaceDark.withValues(alpha: 0.95)
+                    : Colors.white.withValues(alpha: 0.95),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.06),
+                ),
               ),
-              const SizedBox(width: 4),
-              _ToolBtn(
-                icon: Icons.brush_rounded,
-                label: 'Dibujar',
-                tool: CanvasTool.pen,
-                selected: selected,
-                onTap: () => onToolChanged(CanvasTool.pen),
+              child: IconButton(
+                icon: const Icon(Icons.delete_sweep_outlined),
+                color: AppColors.error,
+                tooltip: 'Limpiar lienzo',
+                onPressed: onClearRequested,
               ),
-              const SizedBox(width: 4),
-              _ToolBtn(
-                icon: Icons.auto_fix_high_rounded,
-                label: 'Borrar',
-                tool: CanvasTool.eraser,
-                selected: selected,
-                onTap: () => onToolChanged(CanvasTool.eraser),
-              ),
-            ],
-          ),
-        ),
-        // Botón limpiar lienzo
-        Container(
-          decoration: BoxDecoration(
-            color: isDark
-                ? AppColors.surfaceDark.withValues(alpha: 0.95)
-                : Colors.white.withValues(alpha: 0.95),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.06)
-                  : Colors.black.withValues(alpha: 0.06),
             ),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.delete_sweep_outlined),
-            color: AppColors.error,
-            tooltip: 'Limpiar lienzo',
-            onPressed: onClearRequested,
-          ),
+          ],
         ),
-      ],
-    ),
       ],
     );
   }
@@ -885,24 +891,36 @@ class _ToolBtn extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Editor de clase UML (modal)
+// Editor de Objeto Software (modal)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _UmlClassEditor extends StatefulWidget {
+class _SoftwareObjectEditor extends StatefulWidget {
   final RecognizedObject obj;
-  const _UmlClassEditor({required this.obj});
+  const _SoftwareObjectEditor({required this.obj});
 
   @override
-  State<_UmlClassEditor> createState() => _UmlClassEditorState();
+  State<_SoftwareObjectEditor> createState() => _SoftwareObjectEditorState();
 }
 
-class _UmlClassEditorState extends State<_UmlClassEditor> {
+class _SoftwareObjectEditorState extends State<_SoftwareObjectEditor> {
   late final TextEditingController _name;
   late final TextEditingController _attrs;
+  late RecognizedObjectType _currentType;
 
   @override
   void initState() {
     super.initState();
+    _currentType = widget.obj.type;
+    if (![
+      RecognizedObjectType.umlClass,
+      RecognizedObjectType.sqlTable,
+      RecognizedObjectType.enumObj,
+      RecognizedObjectType.interfaceObj,
+      RecognizedObjectType.apiEndpoint
+    ].contains(_currentType)) {
+      _currentType = RecognizedObjectType.umlClass; // Fallback
+    }
+
     _name = TextEditingController(text: widget.obj.umlClassName ?? '');
     _attrs = TextEditingController(
       text: (widget.obj.umlAttributes ?? []).join('\n'),
@@ -914,6 +932,41 @@ class _UmlClassEditorState extends State<_UmlClassEditor> {
     _name.dispose();
     _attrs.dispose();
     super.dispose();
+  }
+
+  String get _typeName {
+    switch (_currentType) {
+      case RecognizedObjectType.sqlTable:
+        return 'Tabla SQL';
+      case RecognizedObjectType.enumObj:
+        return 'Enumeración';
+      case RecognizedObjectType.interfaceObj:
+        return 'Interfaz';
+      case RecognizedObjectType.apiEndpoint:
+        return 'API Endpoint';
+      default:
+        return 'Clase UML';
+    }
+  }
+
+  String get _nameHint {
+    switch (_currentType) {
+      case RecognizedObjectType.sqlTable: return 'users, orders...';
+      case RecognizedObjectType.enumObj: return 'Status, Role...';
+      case RecognizedObjectType.interfaceObj: return 'Repository...';
+      case RecognizedObjectType.apiEndpoint: return 'GET /users';
+      default: return 'Usuario, Producto...';
+    }
+  }
+
+  String get _attrsLabel {
+    switch (_currentType) {
+      case RecognizedObjectType.sqlTable: return 'Columnas (ej. id INT PK)';
+      case RecognizedObjectType.enumObj: return 'Valores';
+      case RecognizedObjectType.interfaceObj: return 'Métodos';
+      case RecognizedObjectType.apiEndpoint: return 'Parámetros / Body';
+      default: return 'Atributos / Métodos';
+    }
   }
 
   @override
@@ -954,7 +1007,7 @@ class _UmlClassEditorState extends State<_UmlClassEditor> {
               ),
             ),
           ),
-          // Título
+          // Título y selector de tipo
           Row(
             children: [
               Container(
@@ -968,20 +1021,23 @@ class _UmlClassEditorState extends State<_UmlClassEditor> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Clase UML', style: AppTextStyles.titleMedium),
-                    Text(
-                      'Doble-tap en cualquier momento para editar',
-                      style: AppTextStyles.labelSmall.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ],
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<RecognizedObjectType>(
+                    value: _currentType,
+                    isExpanded: true,
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                    style: AppTextStyles.titleMedium.copyWith(color: Theme.of(context).colorScheme.onSurface),
+                    items: const [
+                      DropdownMenuItem(value: RecognizedObjectType.umlClass, child: Text('Clase UML')),
+                      DropdownMenuItem(value: RecognizedObjectType.sqlTable, child: Text('Tabla SQL')),
+                      DropdownMenuItem(value: RecognizedObjectType.enumObj, child: Text('Enumeración (Enum)')),
+                      DropdownMenuItem(value: RecognizedObjectType.interfaceObj, child: Text('Interfaz')),
+                      DropdownMenuItem(value: RecognizedObjectType.apiEndpoint, child: Text('API Endpoint')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setState(() => _currentType = val);
+                    },
+                  ),
                 ),
               ),
             ],
@@ -993,9 +1049,9 @@ class _UmlClassEditorState extends State<_UmlClassEditor> {
             autofocus: true,
             style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w700),
             decoration: InputDecoration(
-              labelText: 'Nombre de la clase',
-              hintText: 'Usuario, Producto, Pedido…',
-              prefixIcon: const Icon(Icons.class_rounded),
+              labelText: 'Nombre ($_typeName)',
+              hintText: _nameHint,
+              prefixIcon: const Icon(Icons.title_rounded),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               filled: true,
             ),
@@ -1008,8 +1064,8 @@ class _UmlClassEditorState extends State<_UmlClassEditor> {
             style: AppTextStyles.bodyMedium.copyWith(fontFamily: 'monospace'),
             keyboardType: TextInputType.multiline,
             decoration: InputDecoration(
-              labelText: 'Atributos / Métodos',
-              hintText: '+ id: int\n+ nombre: String\n- _clave: String\n+ guardar(): void',
+              labelText: _attrsLabel,
+              hintText: '',
               alignLabelWithHint: true,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               filled: true,
@@ -1017,7 +1073,7 @@ class _UmlClassEditorState extends State<_UmlClassEditor> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Uno por línea. Prefijos: + público · - privado · # protegido',
+            'Un elemento por línea.',
             style: AppTextStyles.labelSmall.copyWith(
               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
             ),
@@ -1062,13 +1118,14 @@ class _UmlClassEditorState extends State<_UmlClassEditor> {
         .where((l) => l.isNotEmpty)
         .toList();
 
-    context.read<CanvasBloc>().add(UpdateUmlClass(
+    context.read<CanvasBloc>().add(UpdateSoftwareObject(
           id: widget.obj.id,
+          type: _currentType,
           name: _name.text.trim(),
           attributes: attrs,
         ));
     Navigator.pop(context);
-    AppNotification.success(context, '✓ Clase "${_name.text.trim()}" guardada');
+    AppNotification.success(context, '✓ $_typeName guardada');
   }
 }
 
@@ -1199,7 +1256,7 @@ class CanvasContentPainter extends CustomPainter {
   }
 
   void _paintObject(Canvas canvas, RecognizedObject obj) {
-    final rawColorValue = obj.properties['colorValue'] as int? ?? AppColors.primary.value;
+    final rawColorValue = obj.properties['colorValue'] as int? ?? AppColors.primary.toARGB32();
     final strokeColor = (rawColorValue == 0xFF1E1E1E && isDark)
         ? Colors.white
         : Color(rawColorValue);
@@ -1284,11 +1341,15 @@ class CanvasContentPainter extends CustomPainter {
         canvas.drawPath(headPath, Paint()..color = strokeColor..style = PaintingStyle.fill);
 
       case RecognizedObjectType.umlClass:
-        _paintUmlClass(canvas, obj, fillPaint, strokePaint, strokeColor);
+      case RecognizedObjectType.sqlTable:
+      case RecognizedObjectType.enumObj:
+      case RecognizedObjectType.interfaceObj:
+      case RecognizedObjectType.apiEndpoint:
+        _paintSoftwareObject(canvas, obj, fillPaint, strokePaint, strokeColor);
     }
   }
 
-  void _paintUmlClass(
+  void _paintSoftwareObject(
     Canvas canvas,
     RecognizedObject obj,
     Paint fillPaint,
@@ -1297,19 +1358,44 @@ class CanvasContentPainter extends CustomPainter {
   ) {
     final bb = obj.boundingBox;
     const radius = Radius.circular(10);
-    const headerH = 44.0;
+    const headerH = 50.0;
+
+    // Colores e insignias por tipo
+    Color headerColor = AppColors.primary;
+    String? stereotype;
+
+    switch (obj.type) {
+      case RecognizedObjectType.sqlTable:
+        headerColor = const Color(0xFF64748B); // Slate
+        stereotype = '<< table >>';
+        break;
+      case RecognizedObjectType.enumObj:
+        headerColor = const Color(0xFF8B5CF6); // Purple
+        stereotype = '<< enumeration >>';
+        break;
+      case RecognizedObjectType.interfaceObj:
+        headerColor = const Color(0xFF14B8A6); // Teal
+        stereotype = '<< interface >>';
+        break;
+      case RecognizedObjectType.apiEndpoint:
+        headerColor = const Color(0xFFF97316); // Orange
+        stereotype = '<< endpoint >>';
+        break;
+      default:
+        break;
+    }
 
     // Fondo
     canvas.drawRRect(RRect.fromRectAndRadius(bb, radius), fillPaint);
 
-    // Franja del header en color primario
+    // Franja del header
     final headerClip = Path()
       ..addRRect(RRect.fromRectAndRadius(bb, radius));
     canvas.save();
     canvas.clipPath(headerClip);
     canvas.drawRect(
       Rect.fromLTWH(bb.left, bb.top, bb.width, headerH),
-      Paint()..color = AppColors.primary,
+      Paint()..color = headerColor,
     );
     canvas.restore();
 
@@ -1323,12 +1409,28 @@ class CanvasContentPainter extends CustomPainter {
       strokePaint,
     );
 
-    // Nombre de la clase (en blanco sobre fondo primary)
-    final name = obj.umlClassName ?? 'Clase';
+    // Stereotype (si existe)
+    double titleY = bb.top + headerH / 2 - 8;
+    if (stereotype != null) {
+      _drawText(
+        canvas,
+        stereotype,
+        Offset(bb.left + bb.width / 2, bb.top + 6),
+        maxWidth: bb.width - 20,
+        color: Colors.white.withValues(alpha: 0.7),
+        fontSize: 10,
+        fontWeight: FontWeight.w500,
+        centered: true,
+      );
+      titleY += 6; // Bajar el título un poco
+    }
+
+    // Nombre de la clase
+    final name = obj.umlClassName ?? 'Objeto';
     _drawText(
       canvas,
       name,
-      Offset(bb.left + bb.width / 2, bb.top + headerH / 2 - 8),
+      Offset(bb.left + bb.width / 2, titleY),
       maxWidth: bb.width - 20,
       color: Colors.white,
       fontSize: 14,

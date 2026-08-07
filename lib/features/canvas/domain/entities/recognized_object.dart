@@ -1,6 +1,6 @@
 import 'dart:ui';
 
-enum RecognizedObjectType { rectangle, circle, diamond, line, arrow, umlClass }
+enum RecognizedObjectType { rectangle, circle, diamond, line, arrow, umlClass, sqlTable, enumObj, interfaceObj, apiEndpoint }
 
 class RecognizedObject {
   final String id;

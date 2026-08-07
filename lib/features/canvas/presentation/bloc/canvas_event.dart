@@ -1,3 +1,4 @@
+import 'package:logicpad/features/canvas/domain/entities/recognized_object.dart';
 import '../../domain/entities/stroke.dart';
 
 sealed class CanvasEvent {
@@ -48,12 +49,15 @@ class Redo extends CanvasEvent {
   const Redo();
 }
 
-class UpdateUmlClass extends CanvasEvent {
+class UpdateSoftwareObject extends CanvasEvent {
   final String id;
+  final RecognizedObjectType type;
   final String name;
   final List<String> attributes;
-  const UpdateUmlClass({
+  
+  const UpdateSoftwareObject({
     required this.id,
+    required this.type,
     required this.name,
     required this.attributes,
   });
