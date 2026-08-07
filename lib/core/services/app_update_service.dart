@@ -17,7 +17,7 @@ import '../models/app_update_info.dart';
 /// no responde en repos privados sin autenticación.
 class AppUpdateService {
   AppUpdateService({
-    this.owner = 'franciscocastro',
+    this.owner = 'GGeva07',
     this.repo = 'logicpad',
     http.Client? client,
   }) : _client = client ?? http.Client();
