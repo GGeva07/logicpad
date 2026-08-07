@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:logicpad/core/constants/app_routes.dart';
 import 'package:logicpad/core/di/service_locator.dart';
 import 'package:logicpad/features/canvas/domain/entities/stroke.dart';
 import 'package:logicpad/features/canvas/domain/entities/recognized_object.dart';
@@ -484,17 +485,28 @@ class _HeaderChip extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-            decoration: BoxDecoration(
-              color: AppColors.secondary.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              'v0.1',
-              style: AppTextStyles.labelSmall.copyWith(
-                color: AppColors.secondaryDark,
-                fontWeight: FontWeight.w700,
+          GestureDetector(
+            onTap: () => Navigator.of(context).pushNamed(AppRoutes.releaseNotes),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: AppColors.secondary.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'v0.1',
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: AppColors.secondaryDark,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  Icon(Icons.info_outline_rounded,
+                      size: 10, color: AppColors.secondaryDark),
+                ],
               ),
             ),
           ),

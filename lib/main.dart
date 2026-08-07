@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'core/di/service_locator.dart';
+import 'core/constants/app_routes.dart';
 import 'core/navigation/update_gate.dart';
 import 'shared/theme/app_theme.dart';
 import 'features/canvas/presentation/screens/canvas_screen.dart';
+import 'features/about/presentation/screens/release_notes_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,8 +26,11 @@ class MainApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system, // Cambia automáticamente según el tema del sistema
+      themeMode: ThemeMode.system,
       home: const CanvasScreen(),
+      routes: {
+        AppRoutes.releaseNotes: (_) => const ReleaseNotesScreen(),
+      },
     );
   }
 }
